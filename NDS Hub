@@ -6,24 +6,29 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = Workspace.CurrentCamera
 
--- Função para tornar GUI arrastável
+-- Função para tornar GUI arrastável (PC e MOBILE)
 local function makeDraggable(guiObject)
     local dragging, dragStart, startPos
+    
     guiObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = guiObject.Position
         end
     end)
+    
     guiObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+        if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
             local delta = input.Position - dragStart
             guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
+    
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+            dragging = false 
+        end
     end)
 end
 
@@ -131,7 +136,7 @@ local SpdMain, SpdBack, SpdLbl = createSlider("Speed", 16, 300, 16)
 local flingActive = false
 local predictMult = 0.22 -- O quanto ele vai "cortar a frente"
 
-FlingOthersBtn.MouseButton1Click:Connect(function()
+FlingOthersBtn.Activated:Connect(function()
     flingActive = not flingActive
     FlingOthersBtn.Text = flingActive and "Dynamic Fling: ON" or "Dynamic Fling: OFF"
     FlingOthersBtn.BackgroundColor3 = flingActive and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(120, 20, 20)
@@ -195,7 +200,7 @@ end)
 
 -- Anti-Fling
 local isAntiFling = false
-AntiFlingBtn.MouseButton1Click:Connect(function()
+AntiFlingBtn.Activated:Connect(function()
     if not isAntiFling then
         isAntiFling = true
         AntiFlingBtn.Text = "AntiFling ATIVADO"
@@ -212,7 +217,7 @@ end)
 
 -- Auto Farm
 local isFarm = false
-AutoFarmBtn.MouseButton1Click:Connect(function()
+AutoFarmBtn.Activated:Connect(function()
     isFarm = not isFarm
     AutoFarmBtn.Text = isFarm and "AutoFarm ON" or "AutoFarm OFF"
     AutoFarmBtn.BackgroundColor3 = isFarm and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(45, 45, 60)
@@ -227,26 +232,47 @@ AutoFarmBtn.MouseButton1Click:Connect(function()
 end)
 
 -- No Fog
-NoFogBtn.MouseButton1Click:Connect(function() Lighting.FogEnd = 100000; NoFogBtn.Text = "Fog Removido" end)
+NoFogBtn.Activated:Connect(function() Lighting.FogEnd = 100000; NoFogBtn.Text = "Fog Removido" end)
 
--- Sliders (FOV & Speed)
+-- Sliders (FOV & Speed) OTIMIZADOS PARA PC E MOBILE
 local dragFOV, dragSpd = false, false
-FOVMain.MouseButton1Down:Connect(function() dragFOV = true end)
-SpdMain.MouseButton1Down:Connect(function() dragSpd = true end)
-UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragFOV, dragSpd = false, false end end)
+
+FOVMain.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragFOV = true end
+end)
+SpdMain.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragSpd = true end
+end)
+
+UserInputService.InputEnded:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+        dragFOV, dragSpd = false, false 
+    end 
+end)
+
 UserInputService.InputChanged:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseMovement and MainFrame.Visible then
-        local mX = UserInputService:GetMouseLocation().X
+    if (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) and MainFrame.Visible then
+        local mX = i.Position.X -- Usando a posição do input diretamente (funciona no PC e Touch)
+        
         if dragFOV then
             local p = math.clamp((mX - FOVBack.AbsolutePosition.X) / FOVBack.AbsoluteSize.X, 0, 1)
-            FOVMain.Position = UDim2.new(p, -13, 0.5, -13); Camera.FieldOfView = math.floor(70 + (p * 50)); FOVLbl.Text = "Field of View: " .. Camera.FieldOfView
+            FOVMain.Position = UDim2.new(p, -13, 0.5, -13)
+            Camera.FieldOfView = math.floor(70 + (p * 50))
+            FOVLbl.Text = "Field of View: " .. Camera.FieldOfView
+            
         elseif dragSpd then
             local p = math.clamp((mX - SpdBack.AbsolutePosition.X) / SpdBack.AbsoluteSize.X, 0, 1)
-            SpdMain.Position = UDim2.new(p, -13, 0.5, -13); local v = math.floor(16 + (p * 284)); SpdLbl.Text = "Speed: " .. v
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = v end
+            SpdMain.Position = UDim2.new(p, -13, 0.5, -13)
+            local v = math.floor(16 + (p * 284))
+            SpdLbl.Text = "Speed: " .. v
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then 
+                LocalPlayer.Character.Humanoid.WalkSpeed = v 
+            end
         end
     end
 end)
-ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
-CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
+
+-- Janela Ocultar/Exibir
+ToggleBtn.Activated:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+CloseBtn.Activated:Connect(function() MainFrame.Visible = false end)
 makeDraggable(MainFrame)
